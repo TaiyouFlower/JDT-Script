@@ -227,10 +227,10 @@ async def upload_image(file: UploadFile = File(...)):
 
         # Sizes and formats to generate
         sizes = [
-            ("1200x1200-jpg", (1200, 1200), "JPEG"),
-            ("1200x1200-webp", (1200, 1200), "WEBP"),
-            ("600x600-jpg", (600, 600), "JPEG"),
-            ("600x600-webp", (600, 600), "WEBP")
+            ("1200x1200-jpg", (1000, 667), "JPEG"),
+            ("1200x1200-webp", (1000, 667), "WEBP"),
+            ("600x600-jpg", (600, 400), "JPEG"),
+            ("600x600-webp", (600, 400), "WEBP")
         ]
 
         # Prepare to store compressed image URLs
