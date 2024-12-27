@@ -1,1 +1,1 @@
-uvicorn app:ap realod 
+uvicorn app:app reload 
