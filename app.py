@@ -15,6 +15,19 @@ import requests
 
 app = FastAPI()
 
+static_dir = "static"
+subfolders = ["600x600-jpg", "600x600-webp", "1200x1200-jpg", "1200x1200-webp"]
+
+# Ensure the 'static' folder exists
+if not os.path.exists(static_dir):
+    os.makedirs(static_dir)
+
+# Create the subfolders inside 'static'
+for folder in subfolders:
+    path = os.path.join(static_dir, folder)
+    if not os.path.exists(path):
+        os.makedirs(path)
+
 
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
