@@ -275,7 +275,7 @@ async def upload_image(file: UploadFile = File(...)):
             else:
                 resized_img.save(file_path, format="WEBP", quality=100)
             
-            compressed_images[size_name] = f"http://jdt-script.up.railway.app/static/{size_name}/{final_filename}"
+            compressed_images[size_name] = f"https://jdt-script.up.railway.app/static/{size_name}/{final_filename}"
         
         return {"status_code": 200, "message": "Images uploaded and processed successfully!", "compressedImages": compressed_images}
     except Exception as e:
