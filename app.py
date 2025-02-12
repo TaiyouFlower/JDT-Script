@@ -11,8 +11,11 @@ import uuid
 import webp 
 import re
 import logging
+import requests
 
 app = FastAPI()
+
+
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -49,11 +52,15 @@ def parse_text_to_sections(text):
             sections["position"] = sections["title"]
 
         # Extract General Overview
-        general_match = re.search(r"General overview of the role\n(.+?)(\n(?:Typical Duties|Typical duties))", text, re.DOTALL)
+        general_match = re.search(r"General overview of the role\n(.+?)(\n(?:Typical Duties|Typical duties))", text, re.DOTALL | re.IGNORECASE)
+        if not general_match:
+            general_match = re.search(r"Introduction\n(.+?)(\n(?:Typical Duties|Typical duties))", text, re.DOTALL | re.IGNORECASE)
+            if not general_match: 
+                general_match = re.search(r"General overview of the role:\n(.+?)(\n(?:Typical Duties|Typical duties))", text, re.DOTALL | re.IGNORECASE)
         sections["general_overview"] = general_match.group(1).strip() if general_match else ""
 
         # Extract Duties
-        duties_match = re.search(r"Typical Duties and Responsibilities:\n(.+?)(\n(?:Required Skills|Required skills))", text, re.DOTALL)
+        duties_match = re.search(r"Typical Duties and Responsibilities:\n(.+?)(\n(?:Required Skills|Required skills))", text, re.DOTALL | re.IGNORECASE)
         if not duties_match:
             # Try alternative case-insensitive heading
             duties_match = re.search(r"Typical duties and responsibilities\n(.+?)(\n(?:Required Skills|Required skills))", text, re.DOTALL | re.IGNORECASE)
@@ -63,7 +70,7 @@ def parse_text_to_sections(text):
             sections["duties"] = []
 
         # Extract Required Skills
-        skills_match = re.search(r"Required Skills and Experience:\n(.+?)(\n(?:Nice to Have|Nice to have))", text, re.DOTALL)
+        skills_match = re.search(r"Required Skills and Experience:\n(.+?)(\n(?:Nice to Have|Nice to have))", text, re.DOTALL | re.IGNORECASE)
         if not skills_match:
             # Try alternative case-insensitive heading
             skills_match = re.search(r"Required skills and experience\n(.+?)(\n(?:Nice to Have|Nice to have))", text, re.DOTALL | re.IGNORECASE)
@@ -73,7 +80,7 @@ def parse_text_to_sections(text):
             sections["required_skills"] = []
 
         # Extract Nice to Have
-        nice_to_have_match = re.search(r"Nice to Have/Preferred Skills and Experience:\n(.+?)(\n(?:What we offer|Explore sample resumes))", text, re.DOTALL)
+        nice_to_have_match = re.search(r"Nice to Have/Preferred Skills and Experience:\n(.+?)(\n(?:What we offer|Explore sample resumes))", text, re.DOTALL | re.IGNORECASE)
         if not nice_to_have_match:
             # Try alternative case-insensitive heading
             nice_to_have_match = re.search(r"Nice to have/preferred skills and experience (not required)\n(.+?)(\n(?:What we offer|Explore sample resumes))", text, re.DOTALL | re.IGNORECASE)
@@ -86,10 +93,14 @@ def parse_text_to_sections(text):
             sections["nice_to_have"] = []
 
         # Add resumes list (example)
-        resume_match = re.search(r"Explore these effective resume examples to guide your focus and priorities during the candidate review.\n(.+?)(\nContact DevsData LLC)", text, re.DOTALL)
+        resume_match = re.search(r"Explore these effective resume examples to guide your focus and priorities during the candidate review.\n(.+?)(\nContact DevsData LLC)", text, re.DOTALL | re.IGNORECASE)
         if not resume_match:
             # Try alternative case-insensitive heading
             resume_match = re.search(r"Explore these resume examples to guide your focus and priorities during the candidate review\n(.+?)(\n(\nContact DevsData LLC))", text, re.DOTALL | re.IGNORECASE)
+            if not resume_match:
+                resume_match = re.search(r"Explore these resume examples to guide your focus and priorities during the candidate review:\n(.+?)(\n(\nContact DevsData LLC))", text, re.DOTALL | re.IGNORECASE) 
+                if not resume_match:
+                    resume_match = re.search(r"Explore these effective resume examples to guide your focus and priorities during the candidate review:\n(.+?)(\n(\nContact DevsData LLC))", text, re.DOTALL | re.IGNORECASE)
         if resume_match:
             sections["resumes"] = [resume.strip() for resume in resume_match.group(1).split("\n") if resume.strip()]
         else:
@@ -112,7 +123,7 @@ def generate_wordpress_code(sections):
 <h1> {sections['title']} </h1>
 [post_info]
 
-[image src='2024/12/{sections['position'].replace(' ', '_')}_JDT' alt='{sections['position']} working']
+[image src='2025/02/{sections['position'].replace(' ', '_')}_JDT' alt='{sections['position']} working']
 
 <h3>General overview of the role</h3>\n
 {sections['general_overview']}
@@ -213,52 +224,55 @@ os.makedirs('static/1200x1200-webp', exist_ok=True)
 os.makedirs('static/600x600-jpg', exist_ok=True)
 os.makedirs('static/600x600-webp', exist_ok=True)
 
+def resize_image(image, max_size):
+    """ Resize the image while maintaining its aspect ratio """
+    image.thumbnail(max_size)  # Resize while keeping aspect ratio
+    return image
+
 @app.post("/upload/")
 async def upload_image(file: UploadFile = File(...)):
     try:
-        # Generate a unique filename
         unique_filename = f"{uuid.uuid4()}_{file.filename.rsplit('.', 1)[0]}"
-
-        # Read the uploaded image
+        real_filename = file.filename.rsplit('.', 1)[0];
         image_data = await file.read()
-
-        # Open the image
         original_image = Image.open(io.BytesIO(image_data))
 
-        # Sizes and formats to generate
-        sizes = [
-            ("1200x1200-jpg", (1000, 667), "JPEG"),
-            ("1200x1200-webp", (1000, 667), "WEBP"),
-            ("600x600-jpg", (600, 400), "JPEG"),
-            ("600x600-webp", (600, 400), "WEBP")
-        ]
+        # Define max sizes while maintaining aspect ratio
+        sizes = {
+            "1200x1200-jpg": (1200, 1200),
+            "1200x1200-webp": (1200, 1200),
+            "600x600-jpg": (600, 600),
+            "600x600-webp": (600, 600)
+        }
 
-        # Prepare to store compressed image URLs
         compressed_images = {}
 
-        for size_name, size, format in sizes:
-            # Resize the image
-            resized_img = original_image.resize(size).convert("RGB")
-
-            # Create the correct file path and extension
-            file_extension = "jpg" if format == "JPEG" else "webp"
-            final_filename = f"{unique_filename}.{file_extension}"
+        for size_name, max_size in sizes.items():
+            resized_img = resize_image(original_image.copy(), max_size).convert("RGB")
+            
+            file_extension = "jpg" if "jpg" in size_name else "webp"
+            if max_size==(1200,1200):
+                final_filename = f"{real_filename}.{file_extension}"
+            else:
+                final_filename = f"{real_filename}_small.{file_extension}"
             file_path = os.path.join("static", size_name, final_filename)
 
-            # Save the image with the correct format
-            if format == "JPEG":
-                resized_img.save(file_path, format="JPEG", quality=85)
-            elif format == "WEBP":
-                resized_img.save(file_path, format="WEBP", quality=85)
-
-            # Store the URL for the frontend
+            if file_extension == "jpg":
+                resized_img.save(file_path, format="JPEG", quality=100)
+            else:
+                resized_img.save(file_path, format="WEBP", quality=100)
+            
             compressed_images[size_name] = f"http://localhost:8000/static/{size_name}/{final_filename}"
-
-        return {
-            "status_code": 200,
-            "message": "Images uploaded and compressed successfully!",
-            "compressedImages": compressed_images
-        }
+        
+        return {"status_code": 200, "message": "Images uploaded and processed successfully!", "compressedImages": compressed_images}
     except Exception as e:
         logger.error(f"Error processing image: {str(e)}")
         raise HTTPException(status_code=500, detail="Error processing image")
+
+@app.get("/download/{size}/{filename}")
+def download_image(size: str, filename: str):
+    file_path = os.path.join("static", size, filename)
+    if os.path.exists(file_path):
+        return FileResponse(file_path, headers={"Content-Disposition": "attachment; filename=\"{}\"".format(filename)})
+    raise HTTPException(status_code=404, detail="File not found")
+
