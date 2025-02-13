@@ -68,7 +68,7 @@ def parse_text_to_sections(text):
 
 
         # Extract Template Overview 
-        template_match = re.search(r"Template Overview\n(.+?)(\n(?:Introduction)", text, re.DOTALL | re.IGNORECASE)
+        template_match = re.search(r"Template Overview\n(.+?)(\n(?:Introduction))", text, re.DOTALL | re.IGNORECASE)
         if template_match:
             sections["template_overview"] = template_match.group(1).strip() 
         else:
