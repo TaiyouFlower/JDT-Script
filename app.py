@@ -70,14 +70,14 @@ def parse_text_to_sections(text):
         # Extract Template Overview 
         template_match = re.search(r"Template Overview\n(.+?)(\n(?:Introduction))", text, re.DOTALL | re.IGNORECASE)
         if template_match:
-            sections["template_overview"] = template_match.group(1).strip() 
+            sections["template_overview"] =f"<h3>Template Overview</h3>\n" + template_match.group(1).strip() 
         else:
             sections["template_overview"] = ""
 
         # Extract what does [job] do 
-        whatDoes_match = re.search(rf"what does a {regex_position} do?\n(.+?)(\n(?:Typical Duties | Typical duties))", text, re.DOTALL | re.IGNORECASE)
+        whatDoes_match = re.search(r"do?\n(.+?)(\n(?:Typical Duties | Typical duties))", text, re.DOTALL | re.IGNORECASE)
         if not whatDoes_match:
-            whatDoes_match = re.search(rf"What does a {regex_position} do?\n(.+?)(\n(?:Required skills | Required Skills))", text, re.DOTALL | re.IGNORECASE)
+            whatDoes_match = re.search(r"do?\n(.+?)(\n(?:Required skills | Required Skills))", text, re.DOTALL | re.IGNORECASE)
         if whatDoes_match:
             sections["what_does"] =f"<h3> What does a {regex_position} do?</h3>\n" + whatDoes_match.group(1).strip() 
         else:
@@ -160,6 +160,8 @@ def generate_wordpress_code(sections):
 test
 
 [image src='2025/02/{sections['position'].replace(' ', '_')}_JDT' alt='{sections['position']} working']
+
+{sections[template_overview]}
 
 <h3>General overview of the role</h3>\n
 {sections['general_overview']}
