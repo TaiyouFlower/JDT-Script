@@ -64,6 +64,28 @@ def parse_text_to_sections(text):
         else:
             sections["position"] = sections["title"]
 
+        regex_position = re.escape(sections["position"])
+
+
+        # Extract Template Overview 
+        template_match = re.search(r"Template Overview\n(.+?)(\n(?:Introduction)", text, re.DOTALL | re.IGNORECASE)
+        if template_match:
+            sections["template_overview"] = template_match.group(1).strip() 
+        else:
+            sections["template_overview"] = ""
+
+        # Extract what does [job] do 
+        whatDoes_match = re.search(rf"what does a {regex_position} do?\n(.+?)(\n(?:Typical Duties | Typical duties))", text, re.DOTALL | re.IGNORECASE)
+        if not whatDoes_match:
+            whatDoes_match = re.search(rf"What does a {regex_position} do?\n(.+?)(\n(?:Required skills | Required Skills))", text, re.DOTALL | re.IGNORECASE)
+        if whatDoes_match:
+            sections["what_does"] =f"<h3> What does a {regex_position} do?</h3>\n" + whatDoes_match.group(1).strip() 
+        else:
+            sections["what_does"] = ""
+
+        #Extract Salary
+
+
         # Extract General Overview
         general_match = re.search(r"General overview of the role\n(.+?)(\n(?:Typical Duties|Typical duties))", text, re.DOTALL | re.IGNORECASE)
         if not general_match:
@@ -135,11 +157,14 @@ def generate_wordpress_code(sections):
 <section>
 <h1> {sections['title']} </h1>
 [post_info]
+test
 
 [image src='2025/02/{sections['position'].replace(' ', '_')}_JDT' alt='{sections['position']} working']
 
 <h3>General overview of the role</h3>\n
 {sections['general_overview']}
+
+{sections['what_does']}
 
 <h3 class='include'>Typical duties and responsibilities</h3>\n
 <ul>
@@ -147,11 +172,11 @@ def generate_wordpress_code(sections):
         for duty in sections["duties"]:
             wordpress_template += f"  <li>{duty}</li>\n "
 
-        wordpress_template += "</ul>\n\n<h3>Required skills and experience</h3>\n\n<ul style='margin-bottom: 30px;'>\n"
+        wordpress_template += "</ul>\n\n<h3 class='include'>Required skills and experience</h3>\n\n<ul style='margin-bottom: 30px;'>\n"
         for skill in sections["required_skills"]:
             wordpress_template += f"  <li>{skill}</li>\n"
 
-        wordpress_template += "</ul>\n\n[scheduler text='IT recruitment']\n\n<h3 class='include'>Nice to have/preferred skills and experience (not required)</h3>\n\n<ul>\n"
+        wordpress_template += "</ul>\n\n[scheduler text='IT recruitment']\n\n<h3>Nice to have/preferred skills and experience (not required)</h3>\n\n<ul>\n"
         for item in sections["nice_to_have"]:
             wordpress_template += f"  <li>{item}</li>\n"
         wordpress_template += """
@@ -178,7 +203,7 @@ def generate_wordpress_code(sections):
 
 We recommend including general information about the company, such as its mission, values, and industry focus. For instance, you could say:
 
-<i>&quot;DevsData LLC is an <a href="https://devsdata.com/recruitment/" target="_blank" rel="noopener">IT recruitment agency</a> that connects top tech talent with leading companies to drive innovation and success. Their diverse team of US specialists brings unique viewpoints and cultural insights, boosting their capacity to meet client demands and build inclusive work cultures. Over the past 8 years, DevsData LLC has successfully completed more than 80 projects for startups and corporate clients in the US and Europe.&quot;</i>
+<i>&quot;DevsData LLC is an <a href="/recruitment" target="_blank" rel="noopener">IT recruitment agency</a> that connects top tech talent with leading companies to drive innovation and success. Their diverse team of US specialists brings unique viewpoints and cultural insights, boosting their capacity to meet client demands and build inclusive work cultures. Over the past 8 years, DevsData LLC has successfully completed more than 80 projects for startups and corporate clients in the US and Europe.&quot;</i>
 
 <h3 class='include'>Explore sample resumes</h3>
 
